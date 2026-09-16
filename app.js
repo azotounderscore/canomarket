@@ -932,5 +932,28 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// ============ CLICK SU "MERCATI" → TORNA ALLA HOME ============
+document.getElementById('app-title').addEventListener('click', () => {
+    // Chiudi il canale realtime se aperto
+    if (realtimeChannel) {
+        supabaseClient.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+    }
+
+    // Nascondi tutte le viste
+    hide('market-view');
+    hide('profile-view');
+    hide('admin-view');
+    hide('public-profile-view');
+
+    // Mostra la home
+    show('main-view');
+
+    // Reset filtro a "Tutti" e ricarica i mercati
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    document.querySelector('.filter-chip[data-category="all"]').classList.add('active');
+    loadMarkets('all');
+});
+
 // ============ INIT ============
 initAuth();
