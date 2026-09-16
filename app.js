@@ -79,14 +79,30 @@ async function initAuth() {
         if (event === 'INITIAL_SESSION') return;
 
         if (event === 'SIGNED_IN' && session) {
-            // Se è lo stesso utente già loggato, non riprocessare
-            if (currentUser && currentUser.id === session.user.id && currentProfile) {
-                return;
-            }
-            currentUser = session.user;
-            await loadProfile();
-            showApp();
-        } else if (event === 'SIGNED_OUT') {
+        // Se è lo stesso utente già loggato, non riprocessare
+        if (currentUser && currentUser.id === session.user.id && currentProfile) {
+            return;
+        }
+        currentUser = session.user;
+        await loadProfile();
+    
+        // Pulisci il form e i messaggi di errore
+        const form = document.getElementById('auth-form');
+        if (form) form.reset();
+        const errEl = document.getElementById('auth-error');
+        if (errEl) errEl.textContent = '';
+    
+        // Riporta la modalità del form al default
+        isSignUp = true;
+        const submitBtn = document.getElementById('auth-submit');
+        if (submitBtn) submitBtn.textContent = 'Registrati';
+        const toggleLink = document.getElementById('toggle-mode');
+        if (toggleLink) toggleLink.textContent = 'Accedi';
+        const toggleText = document.querySelector('.auth-toggle');
+        if (toggleText) toggleText.firstChild.textContent = 'Hai già un account? ';
+    
+        showApp();
+    } else if (event === 'SIGNED_OUT') {
             resetAuthState();
             hide('app');
             hide('market-view');
@@ -115,11 +131,18 @@ document.getElementById('auth-toggle').addEventListener('click', (e) => {
 
 document.getElementById('auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitBtn = document.getElementById('auth-submit');
     const username = document.getElementById('username').value.trim();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const errorEl = document.getElementById('auth-error');
     errorEl.textContent = '';
+
+    // Blocca doppi invii
+    if (submitBtn.disabled) return;
+    submitBtn.disabled = true;
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Attendi...';
 
     try {
         if (isSignUp) {
@@ -138,7 +161,31 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
             if (error) throw error;
         }
     } catch (err) {
-        errorEl.textContent = err.message;
+        const raw = (err.message || '').toLowerCase();
+        let msg = err.message || 'Errore sconosciuto';
+
+        if (raw.includes('invalid login credentials')) {
+            msg = '❌ Email o password non corretti. Riprova.';
+        } else if (raw.includes('email not confirmed')) {
+            msg = '📧 Devi confermare la tua email prima di accedere.';
+        } else if (raw.includes('user already registered')) {
+            msg = '⚠️ Questa email è già registrata. Tocca "Accedi" per entrare.';
+        } else if (raw.includes('password should be at least')) {
+            msg = '🔒 La password deve avere almeno 6 caratteri.';
+        } else if (raw.includes('invalid email') || raw.includes('unable to validate email')) {
+            msg = '📧 Email non valida. Controlla e riprova.';
+        } else if (raw.includes('rate limit') || raw.includes('too many')) {
+            msg = '⏱️ Troppi tentativi. Aspetta qualche minuto e riprova.';
+        }
+
+        errorEl.textContent = msg;
+
+        // Pulisci solo la password, lascia email e username per correzione
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
     }
 });
 
@@ -159,8 +206,22 @@ async function loadProfile() {
 function showApp() {
     hide('loading');
     hide('auth-screen');
+
+    // Reset di tutte le viste: mostra sempre la home dopo il login
+    hide('market-view');
+    hide('profile-view');
+    hide('admin-view');
+    hide('public-profile-view');
+    show('main-view');
+
     show('app');
-    loadMarkets();
+
+    // Reset del filtro categoria a "Tutti"
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    const allChip = document.querySelector('.filter-chip[data-category="all"]');
+    if (allChip) allChip.classList.add('active');
+
+    loadMarkets('all');
 }
 
 // ============ MERCATI ============
