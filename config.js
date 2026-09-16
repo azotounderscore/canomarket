@@ -1,0 +1,2 @@
+window.SUPABASE_URL = 'https://tyfnrtvpiagatwnanpzn.supabase.co';
+window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5Zm5ydHZwaWFnYXR3bmFucHpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NTQ4OTUsImV4cCI6MjEwNTEzMDg5NX0.UsbGbUL2X6xBslRkbdQis38IwLVT7aABmWq02ZjgM6s';

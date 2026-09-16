@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Prediction Market</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Supabase JS via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Schermata di caricamento -->
+    <div id="loading" class="loading-screen">
+        <div class="spinner"></div>
+        <p>Caricamento...</p>
+    </div>
+
+    <!-- Schermata di autenticazione -->
+    <div id="auth-screen" class="auth-screen hidden">
+        <div class="auth-container">
+            <h1>Prediction Market</h1>
+            <p class="auth-subtitle">Scommetti con gli amici</p>
+            <form id="auth-form">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="email" id="email" placeholder="Email" required>
+                <input type="password" id="password" placeholder="Password" required minlength="6">
+                <button type="submit" id="auth-submit">Registrati / Accedi</button>
+            </form>
+            <p class="auth-toggle" id="auth-toggle">
+                Hai già un account? <a href="#" id="toggle-mode">Accedi</a>
+            </p>
+            <p class="auth-error" id="auth-error"></p>
+        </div>
+    </div>
+
+    <!-- App principale -->
+    <div id="app" class="app hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <h1 id="app-title">Mercati</h1>
+            <div class="header-actions">
+                <span class="credits-badge" id="credits-badge">0</span>
+                <button class="btn-icon" id="profile-btn">👤</button>
+            </div>
+        </header>
+
+        <!-- Home: lista mercati -->
+        <main id="main-view" class="main-content">
+            <div class="filters" id="filters">
+                <button class="filter-chip active" data-category="all">Tutti</button>
+                <button class="filter-chip" data-category="generale">Generale</button>
+                <button class="filter-chip" data-category="sport">Sport</button>
+                <button class="filter-chip" data-category="vita">Vita</button>
+            </div>
+            <div id="markets-list" class="markets-list"></div>
+            <button class="fab" id="create-market-btn">+</button>
+        </main>
+
+        <!-- Dettaglio mercato -->
+        <main id="market-view" class="main-content hidden">
+            <button class="back-btn" id="back-to-home">← Indietro</button>
+            <div id="market-detail"></div>
+            <div id="comments-section" class="comments-section">
+                <h3>Commenti</h3>
+                <div id="comments-list"></div>
+                <div class="comment-input">
+                    <input type="text" id="comment-input" placeholder="Scrivi un commento...">
+                    <button id="send-comment">Invia</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Profilo -->
+        <main id="profile-view" class="main-content hidden">
+            <button class="back-btn" id="back-from-profile">← Indietro</button>
+            <div id="profile-content"></div>
+        </main>
+
+        <!-- Admin Panel -->
+        <main id="admin-view" class="main-content hidden">
+            <button class="back-btn" id="back-from-admin">← Indietro</button>
+            <h2>Pannello Admin</h2>
+            <div id="admin-content"></div>
+        </main>
+
+        <!-- Modale creazione mercato -->
+        <div id="create-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Nuovo Mercato</h3>
+                <form id="create-market-form">
+                    <input type="text" id="market-question" placeholder="Domanda (es. 'Marco arriverà in ritardo?')" required maxlength="200">
+                    <textarea id="market-description" placeholder="Descrizione (opzionale)" rows="3"></textarea>
+                    <select id="market-category">
+                        <option value="generale">Generale</option>
+                        <option value="sport">Sport</option>
+                        <option value="vita">Vita</option>
+                    </select>
+                    <input type="datetime-local" id="market-closes" required>
+                    <div class="modal-actions">
+                        <button type="button" id="cancel-create">Annulla</button>
+                        <button type="submit">Crea</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modale scommessa -->
+        <div id="bet-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3 id="bet-modal-title">Scommetti</h3>
+                <div class="bet-options">
+                    <button class="bet-side yes" data-side="true">YES</button>
+                    <button class="bet-side no" data-side="false">NO</button>
+                </div>
+                <label>Quantità (crediti)</label>
+                <input type="number" id="bet-amount" min="1" value="10">
+                <p id="bet-preview" class="bet-preview"></p>
+                <div class="modal-actions">
+                    <button type="button" id="cancel-bet">Annulla</button>
+                    <button type="button" id="confirm-bet">Conferma</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modale admin grant -->
+        <div id="grant-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Assegna Crediti</h3>
+                <p id="grant-user-name"></p>
+                <input type="number" id="grant-amount" min="1" value="500" placeholder="Crediti">
+                <input type="text" id="grant-reason" placeholder="Motivo (opzionale)">
+                <div class="modal-actions">
+                    <button type="button" id="cancel-grant">Annulla</button>
+                    <button type="button" id="confirm-grant">Assegna</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
