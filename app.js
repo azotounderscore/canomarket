@@ -493,40 +493,52 @@ async function updateBetPreview() {
 }
 
 document.getElementById('confirm-bet').addEventListener('click', async () => {
-    const amount = parseInt(document.getElementById('bet-amount').value) || 0;
-    if (amount < 1) return alert('Inserisci una quantità valida');
-    if (currentProfile.credits < amount) return alert('Crediti insufficienti');
+    const btn = document.getElementById('confirm-bet');
+    if (btn.disabled) return; // già in corso, ignora altri click
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Invio...';
 
-    const { data: market } = await supabaseClient.from('markets').select('*').eq('id', currentMarketId).single();
-    const qYes = Number(market.q_yes);
-    const qNo = Number(market.q_no);
-    const b = Number(market.b);
+    try {
+        const amount = parseInt(document.getElementById('bet-amount').value) || 0;
+        if (amount < 1) { alert('Inserisci una quantità valida'); return; }
+        if (currentProfile.credits < amount) { alert('Crediti insufficienti'); return; }
 
-    const newQYes = selectedSide ? qYes + amount : qYes;
-    const newQNo = selectedSide ? qNo : qNo + amount;
-    const cost = Math.ceil(costFunction(newQYes, newQNo, b) - costFunction(qYes, qNo, b));
+        const { data: market } = await supabaseClient.from('markets').select('*').eq('id', currentMarketId).single();
+        const qYes = Number(market.q_yes);
+        const qNo = Number(market.q_no);
+        const b = Number(market.b);
 
-    if (cost > currentProfile.credits) return alert('Crediti insufficienti per questa scommessa');
+        const newQYes = selectedSide ? qYes + amount : qYes;
+        const newQNo = selectedSide ? qNo : qNo + amount;
+        const cost = Math.ceil(costFunction(newQYes, newQNo, b) - costFunction(qYes, qNo, b));
 
-    const { error } = await supabaseClient.rpc('execute_bet', {
-        p_user_id: currentUser.id,
-        p_market_id: currentMarketId,
-        p_side: selectedSide,
-        p_shares: amount,
-        p_cost: cost,
-        p_new_q_yes: newQYes,
-        p_new_q_no: newQNo
-    });
+        if (cost > currentProfile.credits) { alert('Crediti insufficienti per questa scommessa'); return; }
 
-    if (error) { alert(error.message); return; }
+        const { error } = await supabaseClient.rpc('execute_bet', {
+            p_user_id: currentUser.id,
+            p_market_id: currentMarketId,
+            p_side: selectedSide,
+            p_shares: amount,
+            p_cost: cost,
+            p_new_q_yes: newQYes,
+            p_new_q_no: newQNo
+        });
 
-    hide('bet-modal');
-    await loadProfile();
-    await openMarket(currentMarketId);
-    await supabaseClient.channel(`market:${currentMarketId}`).send({
-        type: 'broadcast', event: 'UPDATE',
-        payload: { new: { q_yes: newQYes, q_no: newQNo, b } }
-    });
+        if (error) { alert(error.message); return; }
+
+        hide('bet-modal');
+        await loadProfile();
+        await openMarket(currentMarketId);
+        await supabaseClient.channel(`market:${currentMarketId}`).send({
+            type: 'broadcast', event: 'UPDATE',
+            payload: { new: { q_yes: newQYes, q_no: newQNo, b } }
+        });
+    } finally {
+        // Riabilita il pulsante (a prescindere dall'esito)
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
 });
 
 document.getElementById('cancel-bet').addEventListener('click', () => hide('bet-modal'));
