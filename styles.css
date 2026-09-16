@@ -365,6 +365,17 @@ body {
     cursor: pointer;
 }
 
+/* Commenti: più respiro sotto l'input */
+.comments-section .comment-input {
+    margin-bottom: 16px;
+}
+
+/* Lista commenti con scroll limitato se sono tanti */
+#comments-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
 /* Modali */
 .modal {
     position: fixed;
