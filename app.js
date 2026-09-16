@@ -637,5 +637,15 @@ window.closeMarket = async function(marketId) {
     loadAdminPanel();
 };
 
+// ============ CHIUSURA MODALI CLICCANDO FUORI ============
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        // Chiude solo se il click è sullo sfondo scuro, non sul contenuto
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
+});
+
 // ============ INIT ============
 initAuth();
