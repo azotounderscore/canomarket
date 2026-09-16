@@ -582,7 +582,6 @@ function renderBetHistory(positions) {
         return '<p class="bet-history-empty">Nessuna puntata ancora</p>';
     }
 
-    // Ordina per data di creazione del mercato (più recenti in alto)
     const sorted = [...positions].sort((a, b) => {
         const da = a.markets?.created_at || '';
         const db = b.markets?.created_at || '';
@@ -673,9 +672,6 @@ async function loadProfileView() {
     content += `<div class="bet-history-list">${renderBetHistory(positions)}</div>`;
 
     content += `<h3 style="margin:24px 0 12px 0;font-size:16px">Ultime transazioni</h3>`;
-    }
-
-    content += `<h3 style="margin-bottom:12px;font-size:16px">Ultime transazioni</h3>`;
     if (txs && txs.length > 0) {
         content += txs.map(t => `
             <div class="admin-user-row">
@@ -846,11 +842,9 @@ document.addEventListener('click', (e) => {
 window.openUserProfile = async function(userId) {
     if (!userId) return;
 
-    // Traccia la vista di partenza prima di nascondere tutto
     profileReturnView = getCurrentView();
 
     if (userId === currentUser.id) {
-        // Profilo personale
         hide('main-view');
         hide('market-view');
         hide('admin-view');
@@ -860,7 +854,6 @@ window.openUserProfile = async function(userId) {
         return;
     }
 
-    // Profilo pubblico
     hide('main-view');
     hide('market-view');
     hide('profile-view');
@@ -886,7 +879,7 @@ async function loadPublicProfileView(userId) {
 
     const { data: positions } = await supabaseClient
         .from('positions')
-        .select('side, shares, markets(status, outcome)')
+        .select('side, shares, markets(id, question, status, outcome, created_at)')
         .eq('user_id', userId);
 
     const totalBets = positions?.length || 0;
@@ -926,7 +919,6 @@ async function loadPublicProfileView(userId) {
     `;
 }
 
-// Back button: torna alla vista da cui è stato aperto il profilo
 document.getElementById('back-from-public-profile').addEventListener('click', () => {
     hide('public-profile-view');
     show(profileReturnView);
