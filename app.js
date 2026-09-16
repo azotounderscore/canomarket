@@ -347,11 +347,11 @@ async function loadParticipants(marketId) {
 
     const totalShares = data.reduce((sum, p) => sum + Number(p.shares), 0);
 
-    const rows = data.map(p => {
+        const rows = data.map(p => {
         const username = p.profiles?.username || 'Utente';
         return `
             <div class="participant-row">
-                <div class="participant-info">
+                <div class="participant-info" data-user-id="${p.user_id}">
                     <span class="participant-username">${username}</span>
                     <span class="participant-side ${p.side ? 'yes' : 'no'}">${p.side ? 'YES' : 'NO'}</span>
                 </div>
@@ -359,7 +359,7 @@ async function loadParticipants(marketId) {
             </div>
         `;
     }).join('');
-
+    
     listEl.innerHTML = rows +
         `<div class="participants-total">${data.length} partecipant${data.length === 1 ? 'e' : 'i'} · ${Math.floor(totalShares)} crediti totali</div>`;
 }
@@ -415,7 +415,7 @@ function renderComment(c) {
     const username = c.profiles?.username || 'Utente';
     return `
         <div class="comment-item" data-id="${c.id}">
-            <div class="comment-author">${username}</div>
+            <div class="comment-author comment-author-link" data-user-id="${c.user_id}">${username}</div>
             <div class="comment-text">${c.content}</div>
             <div class="comment-time">${timeAgo(c.created_at)}</div>
         </div>
@@ -778,6 +778,104 @@ document.querySelectorAll('.modal').forEach(modal => {
             modal.classList.add('hidden');
         }
     });
+});
+
+// ============ PROFILO PUBBLICO ============
+document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-user-id]');
+    if (target && target.dataset.userId) {
+        openUserProfile(target.dataset.userId);
+    }
+});
+
+window.openUserProfile = async function(userId) {
+    if (!userId) return;
+
+    // Se è il proprio profilo, usa la vista "personale" (con logout e admin)
+    if (userId === currentUser.id) {
+        hide('main-view');
+        hide('market-view');
+        hide('admin-view');
+        hide('public-profile-view');
+        show('profile-view');
+        await loadProfileView();
+        return;
+    }
+
+    hide('main-view');
+    hide('market-view');
+    hide('profile-view');
+    hide('admin-view');
+    show('public-profile-view');
+    await loadPublicProfileView(userId);
+};
+
+async function loadPublicProfileView(userId) {
+    const container = document.getElementById('public-profile-content');
+    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:32px">Caricamento...</p>';
+
+    const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    if (error || !profile) {
+        container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:32px">Profilo non trovato</p>';
+        return;
+    }
+
+    const { data: positions } = await supabaseClient
+        .from('positions')
+        .select('side, shares, markets(status, outcome)')
+        .eq('user_id', userId);
+
+    const totalBets = positions?.length || 0;
+    const wonPositions = positions?.filter(p =>
+        p.markets?.status === 'resolved' &&
+        ((p.side === true && p.markets.outcome === true) ||
+         (p.side === false && p.markets.outcome === false))
+    ).length || 0;
+    const winRate = totalBets > 0 ? Math.round((wonPositions / totalBets) * 100) : 0;
+
+    container.innerHTML = `
+        <div class="profile-header">
+            <div class="profile-avatar">${(profile.username || 'U')[0].toUpperCase()}</div>
+            <h2>${profile.username}</h2>
+            <p style="color:var(--text-muted);font-size:13px">Iscritto dal ${formatDate(profile.created_at)}</p>
+        </div>
+        <div class="profile-stats">
+            <div class="stat-card">
+                <div class="stat-value">${profile.credits}</div>
+                <div class="stat-label">Crediti</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${winRate}%</div>
+                <div class="stat-label">Win Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${totalBets}</div>
+                <div class="stat-label">Scommesse</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${wonPositions}</div>
+                <div class="stat-label">Vinte</div>
+            </div>
+        </div>
+        <p style="text-align:center;color:var(--text-muted);font-size:13px;margin-top:24px">
+            Lista delle puntate in arrivo prossimamente 🚀
+        </p>
+    `;
+}
+
+// Back button intelligente: torna al mercato se aperto, altrimenti alla home
+document.getElementById('back-from-public-profile').addEventListener('click', () => {
+    hide('public-profile-view');
+    if (currentMarketId && !document.getElementById('market-view').classList.contains('hidden')) {
+        show('market-view');
+    } else {
+        show('main-view');
+    }
 });
 
 // ============ INIT ============
