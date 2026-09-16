@@ -691,3 +691,15 @@ body {
     padding-top: 12px;
     border-top: 1px solid var(--border);
 }
+
+/* Link cliccabili (nomi utente) */
+.comment-author-link,
+.participant-info {
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.comment-author-link:active,
+.participant-info:active {
+    opacity: 0.6;
+}
