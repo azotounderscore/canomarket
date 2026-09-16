@@ -260,7 +260,8 @@ body {
 /* FAB */
 .fab {
     position: fixed;
-    bottom: 104px;
+    bottom: 24px;
+    padding-bottom: 40px;
     right: 24px;
     width: 56px;
     height: 56px;
