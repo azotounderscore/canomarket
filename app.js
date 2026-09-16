@@ -247,6 +247,123 @@ async function openMarket(id) {
     subscribeToMarket(id);
 }
 
+// ============ SWIPE BET PANEL ============
+function initBetPanelSwipe() {
+    const slider = document.getElementById('bet-panel-slider');
+    const dots = document.querySelectorAll('.bet-panel-tab-dot');
+    if (!slider) return;
+
+    let currentPage = 0;
+    let startX = 0;
+    let startY = 0;
+    let isDragging = false;
+    let isHorizontal = null;
+
+    function goToPage(index) {
+        currentPage = Math.max(0, Math.min(1, index));
+        slider.style.transition = 'transform 0.3s ease-out';
+        slider.style.transform = `translateX(-${currentPage * 50}%)`;
+        dots.forEach((d, i) => d.classList.toggle('active', i === currentPage));
+    }
+
+    // Click sui pallini
+    dots.forEach(dot => {
+        dot.addEventListener('click', () => goToPage(parseInt(dot.dataset.page)));
+    });
+
+    // Touch start
+    slider.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isDragging = true;
+        isHorizontal = null;
+        slider.style.transition = 'none';
+    }, { passive: true });
+
+    // Touch move
+    slider.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+
+        // Determina direzione al primo movimento significativo
+        if (isHorizontal === null && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+            isHorizontal = Math.abs(dx) > Math.abs(dy);
+        }
+
+        if (!isHorizontal) return; // scroll verticale: lascia fare al browser
+
+        e.preventDefault();
+
+        const offsetPercent = (dx / slider.offsetWidth) * 100;
+        const base = -currentPage * 50;
+        slider.style.transform = `translateX(${base + offsetPercent}%)`;
+    }, { passive: false });
+
+    // Touch end
+    slider.addEventListener('touchend', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        if (!isHorizontal) return;
+
+        const dx = e.changedTouches[0].clientX - startX;
+        const threshold = slider.offsetWidth * 0.15; // 15% della larghezza
+
+        if (dx < -threshold && currentPage < 1) {
+            goToPage(1);
+        } else if (dx > threshold && currentPage > 0) {
+            goToPage(0);
+        } else {
+            goToPage(currentPage); // snap back
+        }
+    }, { passive: true });
+}
+
+// ============ LISTA PARTECIPANTI ============
+async function loadParticipants(marketId) {
+    const listEl = document.getElementById('participants-list');
+    if (!listEl) return;
+
+    const { data, error } = await supabaseClient
+        .from('positions')
+        .select('shares, side, user_id, profiles(username)')
+        .eq('market_id', marketId)
+        .gt('shares', 0);
+
+    if (error) {
+        console.error(error);
+        listEl.innerHTML = '<div class="participants-empty">Errore nel caricamento</div>';
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        listEl.innerHTML = '<div class="participants-empty">Nessuno ha ancora scommesso. Sii il primo!</div>';
+        return;
+    }
+
+    // Ordina per shares decrescenti
+    data.sort((a, b) => Number(b.shares) - Number(a.shares));
+
+    const totalShares = data.reduce((sum, p) => sum + Number(p.shares), 0);
+
+    const rows = data.map(p => {
+        const username = p.profiles?.username || 'Utente';
+        return `
+            <div class="participant-row">
+                <div class="participant-info">
+                    <span class="participant-username">${username}</span>
+                    <span class="participant-side ${p.side ? 'yes' : 'no'}">${p.side ? 'YES' : 'NO'}</span>
+                </div>
+                <span class="participant-amount">${Math.floor(Number(p.shares))}</span>
+            </div>
+        `;
+    }).join('');
+
+    listEl.innerHTML = rows +
+        `<div class="participants-total">${data.length} partecipant${data.length === 1 ? 'e' : 'i'} · ${Math.floor(totalShares)} crediti totali</div>`;
+}
+
 document.getElementById('back-to-home').addEventListener('click', () => {
     hide('market-view');
     show('main-view');
