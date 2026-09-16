@@ -186,6 +186,7 @@ document.querySelectorAll('.filter-chip').forEach(chip => {
 });
 
 // ============ DETTAGLIO MERCATO ============
+
 async function openMarket(id) {
     currentMarketId = id;
     hide('main-view');
@@ -210,23 +211,38 @@ async function openMarket(id) {
             ${market.description ? `<p class="market-detail-desc">${market.description}</p>` : ''}
         </div>
         <div class="bet-panel">
-            <div class="prices">
-                <div class="price-box yes">
-                    <span class="price">${Math.round(pYes * 100)}%</span>
-                    <span class="label">YES</span>
+            <div class="bet-panel-tabs">
+                <button class="bet-panel-tab-dot active" data-page="0"></button>
+                <button class="bet-panel-tab-dot" data-page="1"></button>
+            </div>
+            <div class="bet-panel-slider" id="bet-panel-slider">
+                <div class="bet-panel-page">
+                    <div class="prices">
+                        <div class="price-box yes">
+                            <span class="price">${Math.round(pYes * 100)}%</span>
+                            <span class="label">YES</span>
+                        </div>
+                        <div class="price-box no">
+                            <span class="price">${Math.round(pNo * 100)}%</span>
+                            <span class="label">NO</span>
+                        </div>
+                    </div>
+                    ${market.status === 'open' ? `
+                        <button class="btn-yes" onclick="openBetModal(true)">Scommetti YES</button>
+                        <button class="btn-no" onclick="openBetModal(false)">Scommetti NO</button>
+                    ` : `<p style="text-align:center;color:var(--text-muted)">Mercato ${market.status}</p>`}
                 </div>
-                <div class="price-box no">
-                    <span class="price">${Math.round(pNo * 100)}%</span>
-                    <span class="label">NO</span>
+                <div class="bet-panel-page">
+                    <div id="participants-list" class="participants-list">
+                        <div class="participants-empty">Caricamento...</div>
+                    </div>
                 </div>
             </div>
-            ${market.status === 'open' ? `
-                <button class="btn-yes" onclick="openBetModal(true)">Scommetti YES</button>
-                <button class="btn-no" onclick="openBetModal(false)">Scommetti NO</button>
-            ` : `<p style="text-align:center;color:var(--text-muted)">Mercato ${market.status}</p>`}
         </div>
     `;
 
+    initBetPanelSwipe();
+    loadParticipants(id);
     loadComments(id);
     subscribeToMarket(id);
 }
