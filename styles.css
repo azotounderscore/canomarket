@@ -703,3 +703,96 @@ body {
 .participant-info:active {
     opacity: 0.6;
 }
+
+/* ============ STORICO PUNTATE NEL PROFILO ============ */
+.bet-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bet-history-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.bet-history-card:active {
+    background: var(--card-hover);
+}
+
+.bet-history-question {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 8px;
+}
+
+.bet-history-details {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.bet-history-side {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.bet-history-side.yes {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--yes);
+}
+
+.bet-history-side.no {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--no);
+}
+
+.bet-history-shares {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.bet-history-status {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-left: auto;
+}
+
+.bet-history-status.open {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent);
+}
+
+.bet-history-status.pending {
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+}
+
+.bet-history-status.won {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--yes);
+}
+
+.bet-history-status.lost {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--no);
+}
+
+.bet-history-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 16px;
+}
