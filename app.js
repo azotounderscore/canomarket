@@ -1,5 +1,5 @@
 // ============ CONFIGURAZIONE ============
-const supabase = window.supabase.createClient(
+const supabaseClient = window.supabase.createClient(
     window.SUPABASE_URL,
     window.SUPABASE_ANON_KEY
 );
@@ -43,7 +43,7 @@ function priceYes(qYes, qNo, b) {
 
 // ============ AUTENTICAZIONE ============
 async function initAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
         currentUser = session.user;
         await loadProfile();
@@ -53,7 +53,7 @@ async function initAuth() {
         show('auth-screen');
     }
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
             currentUser = session.user;
             await loadProfile();
@@ -88,7 +88,7 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
     try {
         if (isSignUp) {
             if (!username) throw new Error('Inserisci un username');
-            const { data, error } = await supabase.auth.signUp({
+            const { data, error } = await supabaseClient.auth.signUp({
                 email,
                 password,
                 options: { data: { username } }
@@ -98,7 +98,7 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
                 errorEl.textContent = 'Controlla la tua email per confermare la registrazione.';
             }
         } else {
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
             if (error) throw error;
         }
     } catch (err) {
@@ -107,7 +107,7 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
 });
 
 async function loadProfile() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
@@ -129,7 +129,7 @@ function showApp() {
 
 // ============ MERCATI ============
 async function loadMarkets(category = 'all') {
-    let query = supabase
+    let query = supabaseClient
         .from('markets')
         .select('*')
         .order('created_at', { ascending: false });
@@ -193,7 +193,7 @@ async function openMarket(id) {
     hide('admin-view');
     show('market-view');
 
-    const { data: market, error } = await supabase
+    const { data: market, error } = await supabaseClient
         .from('markets')
         .select('*')
         .eq('id', id)
@@ -234,15 +234,15 @@ async function openMarket(id) {
 document.getElementById('back-to-home').addEventListener('click', () => {
     hide('market-view');
     show('main-view');
-    if (realtimeChannel) { supabase.removeChannel(realtimeChannel); realtimeChannel = null; }
+    if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
     loadMarkets();
 });
 
 // ============ REALTIME ============
 function subscribeToMarket(marketId) {
-    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+    if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
 
-    realtimeChannel = supabase
+    realtimeChannel = supabaseClient
         .channel(`market:${marketId}`)
         .on('broadcast', { event: 'UPDATE' }, (payload) => {
             if (payload.new && payload.new.q_yes !== undefined) {
@@ -261,7 +261,7 @@ function subscribeToMarket(marketId) {
 
 // ============ COMMENTI ============
 async function loadComments(marketId) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('comments')
         .select('*, profiles(username)')
         .eq('market_id', marketId)
@@ -301,7 +301,7 @@ document.getElementById('send-comment').addEventListener('click', async () => {
     const content = input.value.trim();
     if (!content || !currentMarketId) return;
 
-    const { error } = await supabase.from('comments').insert({
+    const { error } = await supabaseClient.from('comments').insert({
         market_id: currentMarketId,
         user_id: currentUser.id,
         content
@@ -337,7 +337,7 @@ document.getElementById('bet-amount').addEventListener('input', updateBetPreview
 
 async function updateBetPreview() {
     const amount = parseInt(document.getElementById('bet-amount').value) || 0;
-    const { data: market } = await supabase.from('markets').select('*').eq('id', currentMarketId).single();
+    const { data: market } = await supabaseClient.from('markets').select('*').eq('id', currentMarketId).single();
     if (!market) return;
 
     const qYes = Number(market.q_yes);
@@ -358,7 +358,7 @@ document.getElementById('confirm-bet').addEventListener('click', async () => {
     if (amount < 1) return alert('Inserisci una quantità valida');
     if (currentProfile.credits < amount) return alert('Crediti insufficienti');
 
-    const { data: market } = await supabase.from('markets').select('*').eq('id', currentMarketId).single();
+    const { data: market } = await supabaseClient.from('markets').select('*').eq('id', currentMarketId).single();
     const qYes = Number(market.q_yes);
     const qNo = Number(market.q_no);
     const b = Number(market.b);
@@ -369,7 +369,7 @@ document.getElementById('confirm-bet').addEventListener('click', async () => {
 
     if (cost > currentProfile.credits) return alert('Crediti insufficienti per questa scommessa');
 
-    const { error } = await supabase.rpc('execute_bet', {
+    const { error } = await supabaseClient.rpc('execute_bet', {
         p_user_id: currentUser.id,
         p_market_id: currentMarketId,
         p_side: selectedSide,
@@ -384,7 +384,7 @@ document.getElementById('confirm-bet').addEventListener('click', async () => {
     hide('bet-modal');
     await loadProfile();
     await openMarket(currentMarketId);
-    await supabase.channel(`market:${currentMarketId}`).send({
+    await supabaseClient.channel(`market:${currentMarketId}`).send({
         type: 'broadcast', event: 'UPDATE',
         payload: { new: { q_yes: newQYes, q_no: newQNo, b } }
     });
@@ -403,7 +403,7 @@ document.getElementById('create-market-form').addEventListener('submit', async (
     const category = document.getElementById('market-category').value;
     const closesAt = document.getElementById('market-closes').value;
 
-    const { error } = await supabase.from('markets').insert({
+    const { error } = await supabaseClient.from('markets').insert({
         creator_id: currentUser.id,
         question,
         description: description || null,
@@ -437,12 +437,12 @@ document.getElementById('back-from-profile').addEventListener('click', () => {
 });
 
 async function loadProfileView() {
-    const { data: positions } = await supabase
+    const { data: positions } = await supabaseClient
         .from('positions')
         .select('*, markets(question, status, outcome)')
         .eq('user_id', currentUser.id);
 
-    const { data: txs } = await supabase
+    const { data: txs } = await supabaseClient
         .from('transactions')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -508,7 +508,7 @@ async function loadProfileView() {
     document.getElementById('profile-content').innerHTML = content;
 
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        await supabase.auth.signOut();
+        await supabaseClient.auth.signOut();
     });
 }
 
@@ -526,8 +526,8 @@ document.getElementById('back-from-admin').addEventListener('click', () => {
 });
 
 async function loadAdminPanel() {
-    const { data: users } = await supabase.from('profiles').select('*').order('credits', { ascending: true });
-    const { data: markets } = await supabase.from('markets').select('*').eq('status', 'open');
+    const { data: users } = await supabaseClient.from('profiles').select('*').order('credits', { ascending: true });
+    const { data: markets } = await supabaseClient.from('markets').select('*').eq('status', 'open');
 
     let content = `<div class="admin-section"><h3>Utenti (${users?.length || 0})</h3>`;
 
@@ -580,7 +580,7 @@ document.getElementById('confirm-grant').addEventListener('click', async () => {
     const amount = parseInt(document.getElementById('grant-amount').value) || 0;
     const reason = document.getElementById('grant-reason').value.trim() || null;
 
-    const { error } = await supabase.rpc('admin_grant_credits', {
+    const { error } = await supabaseClient.rpc('admin_grant_credits', {
         p_user_id: grantUserId,
         p_amount: amount,
         p_reason: reason
@@ -595,7 +595,7 @@ document.getElementById('confirm-grant').addEventListener('click', async () => {
 window.resolveMarket = async function(marketId, outcome) {
     if (!confirm(`Risolvi questo mercato come ${outcome ? 'YES' : 'NO'}?`)) return;
 
-    const { error } = await supabase.from('markets').update({
+    const { error } = await supabaseClient.from('markets').update({
         status: 'resolved',
         outcome: outcome,
         resolved_at: new Date().toISOString(),
@@ -604,8 +604,7 @@ window.resolveMarket = async function(marketId, outcome) {
 
     if (error) { alert(error.message); return; }
 
-    // Calcola payout per tutti i possessori
-    const { data: positions } = await supabase
+    const { data: positions } = await supabaseClient
         .from('positions')
         .select('*')
         .eq('market_id', marketId)
@@ -615,7 +614,7 @@ window.resolveMarket = async function(marketId, outcome) {
         for (const pos of positions) {
             const payout = Math.floor(Number(pos.shares));
             if (payout > 0) {
-                await supabase.rpc('execute_bet', {
+                await supabaseClient.rpc('execute_bet', {
                     p_user_id: pos.user_id,
                     p_market_id: marketId,
                     p_side: pos.side,
@@ -633,7 +632,7 @@ window.resolveMarket = async function(marketId, outcome) {
 
 window.closeMarket = async function(marketId) {
     if (!confirm('Chiudere questo mercato? Non sarà più possibile scommettere.')) return;
-    const { error } = await supabase.from('markets').update({ status: 'closed' }).eq('id', marketId);
+    const { error } = await supabaseClient.from('markets').update({ status: 'closed' }).eq('id', marketId);
     if (error) { alert(error.message); return; }
     loadAdminPanel();
 };
