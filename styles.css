@@ -571,19 +571,33 @@ body {
 
 .bet-panel-tabs {
     display: flex;
+    flex-direction: row;
+    align-items: center;
     justify-content: center;
     gap: 8px;
     padding: 12px 0 4px 0;
+    width: 100%;
 }
 
 .bet-panel-tab-dot {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    box-sizing: border-box;
     width: 8px;
     height: 8px;
+    min-width: 8px;
+    max-width: 8px;
+    min-height: 8px;
+    max-height: 8px;
+    flex: 0 0 8px;
     border-radius: 50%;
     background: var(--border);
     border: none;
+    outline: none;
     cursor: pointer;
     padding: 0;
+    margin: 0;
     transition: background 0.2s, transform 0.2s;
 }
 
