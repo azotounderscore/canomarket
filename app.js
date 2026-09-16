@@ -53,6 +53,16 @@ function priceYes(qYes, qNo, b) {
 }
 
 // ============ AUTENTICAZIONE ============
+function resetAuthState() {
+    currentUser = null;
+    currentProfile = null;
+    currentMarketId = null;
+    if (realtimeChannel) {
+        try { supabaseClient.removeChannel(realtimeChannel); } catch(e) {}
+        realtimeChannel = null;
+    }
+}
+
 async function initAuth() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
@@ -65,15 +75,30 @@ async function initAuth() {
     }
 
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        // Ignora INITIAL_SESSION: è già gestito da getSession() sopra
+        if (event === 'INITIAL_SESSION') return;
+
         if (event === 'SIGNED_IN' && session) {
+            // Se è lo stesso utente già loggato, non riprocessare
+            if (currentUser && currentUser.id === session.user.id && currentProfile) {
+                return;
+            }
             currentUser = session.user;
             await loadProfile();
             showApp();
         } else if (event === 'SIGNED_OUT') {
-            currentUser = null;
-            currentProfile = null;
-            show('auth-screen');
+            resetAuthState();
             hide('app');
+            hide('market-view');
+            hide('profile-view');
+            hide('public-profile-view');
+            hide('admin-view');
+            show('auth-screen');
+            // Pulisci i campi
+            const form = document.getElementById('auth-form');
+            if (form) form.reset();
+            const errEl = document.getElementById('auth-error');
+            if (errEl) errEl.textContent = '';
         }
     });
 }
@@ -494,7 +519,7 @@ async function updateBetPreview() {
 
 document.getElementById('confirm-bet').addEventListener('click', async () => {
     const btn = document.getElementById('confirm-bet');
-    if (btn.disabled) return; // già in corso, ignora altri click
+    if (btn.disabled) return;
     btn.disabled = true;
     const originalText = btn.textContent;
     btn.textContent = 'Invio...';
@@ -535,7 +560,6 @@ document.getElementById('confirm-bet').addEventListener('click', async () => {
             payload: { new: { q_yes: newQYes, q_no: newQNo, b } }
         });
     } finally {
-        // Riabilita il pulsante (a prescindere dall'esito)
         btn.disabled = false;
         btn.textContent = originalText;
     }
@@ -946,22 +970,18 @@ document.addEventListener('click', (e) => {
 
 // ============ CLICK SU "MERCATI" → TORNA ALLA HOME ============
 document.getElementById('app-title').addEventListener('click', () => {
-    // Chiudi il canale realtime se aperto
     if (realtimeChannel) {
         supabaseClient.removeChannel(realtimeChannel);
         realtimeChannel = null;
     }
 
-    // Nascondi tutte le viste
     hide('market-view');
     hide('profile-view');
     hide('admin-view');
     hide('public-profile-view');
 
-    // Mostra la home
     show('main-view');
 
-    // Reset filtro a "Tutti" e ricarica i mercati
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
     document.querySelector('.filter-chip[data-category="all"]').classList.add('active');
     loadMarkets('all');
