@@ -796,3 +796,14 @@ body {
     font-size: 14px;
     padding: 16px;
 }
+
+/* Titolo app cliccabile → torna alla home */
+#app-title {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#app-title:active {
+    opacity: 0.7;
+}
