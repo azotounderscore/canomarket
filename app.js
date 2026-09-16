@@ -9,10 +9,20 @@ let currentProfile = null;
 let currentMarketId = null;
 let realtimeChannel = null;
 let isSignUp = true;
+let profileReturnView = 'main-view';
 
 // ============ UTILITY ============
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+function getCurrentView() {
+    const views = ['main-view', 'market-view', 'profile-view', 'admin-view', 'public-profile-view'];
+    for (const v of views) {
+        const el = document.getElementById(v);
+        if (el && !el.classList.contains('hidden')) return v;
+    }
+    return 'main-view';
+}
 
 function formatDate(dateStr) {
     const d = new Date(dateStr);
@@ -186,12 +196,12 @@ document.querySelectorAll('.filter-chip').forEach(chip => {
 });
 
 // ============ DETTAGLIO MERCATO ============
-
 async function openMarket(id) {
     currentMarketId = id;
     hide('main-view');
     hide('profile-view');
     hide('admin-view');
+    hide('public-profile-view');
     show('market-view');
 
     const { data: market, error } = await supabaseClient
@@ -266,12 +276,10 @@ function initBetPanelSwipe() {
         dots.forEach((d, i) => d.classList.toggle('active', i === currentPage));
     }
 
-    // Click sui pallini
     dots.forEach(dot => {
         dot.addEventListener('click', () => goToPage(parseInt(dot.dataset.page)));
     });
 
-    // Touch start
     slider.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
@@ -280,18 +288,16 @@ function initBetPanelSwipe() {
         slider.style.transition = 'none';
     }, { passive: true });
 
-    // Touch move
     slider.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
         const dx = e.touches[0].clientX - startX;
         const dy = e.touches[0].clientY - startY;
 
-        // Determina direzione al primo movimento significativo
         if (isHorizontal === null && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
             isHorizontal = Math.abs(dx) > Math.abs(dy);
         }
 
-        if (!isHorizontal) return; // scroll verticale: lascia fare al browser
+        if (!isHorizontal) return;
 
         e.preventDefault();
 
@@ -300,7 +306,6 @@ function initBetPanelSwipe() {
         slider.style.transform = `translateX(${base + offsetPercent}%)`;
     }, { passive: false });
 
-    // Touch end
     slider.addEventListener('touchend', (e) => {
         if (!isDragging) return;
         isDragging = false;
@@ -308,14 +313,14 @@ function initBetPanelSwipe() {
         if (!isHorizontal) return;
 
         const dx = e.changedTouches[0].clientX - startX;
-        const threshold = slider.offsetWidth * 0.15; // 15% della larghezza
+        const threshold = slider.offsetWidth * 0.15;
 
         if (dx < -threshold && currentPage < 1) {
             goToPage(1);
         } else if (dx > threshold && currentPage > 0) {
             goToPage(0);
         } else {
-            goToPage(currentPage); // snap back
+            goToPage(currentPage);
         }
     }, { passive: true });
 }
@@ -342,12 +347,11 @@ async function loadParticipants(marketId) {
         return;
     }
 
-    // Ordina per shares decrescenti
     data.sort((a, b) => Number(b.shares) - Number(a.shares));
 
     const totalShares = data.reduce((sum, p) => sum + Number(p.shares), 0);
 
-        const rows = data.map(p => {
+    const rows = data.map(p => {
         const username = p.profiles?.username || 'Utente';
         return `
             <div class="participant-row">
@@ -359,7 +363,7 @@ async function loadParticipants(marketId) {
             </div>
         `;
     }).join('');
-    
+
     listEl.innerHTML = rows +
         `<div class="participants-total">${data.length} partecipant${data.length === 1 ? 'e' : 'i'} · ${Math.floor(totalShares)} crediti totali</div>`;
 }
@@ -557,16 +561,18 @@ document.getElementById('create-market-form').addEventListener('submit', async (
 
 // ============ PROFILO ============
 document.getElementById('profile-btn').addEventListener('click', async () => {
+    profileReturnView = getCurrentView();
     hide('main-view');
     hide('market-view');
     hide('admin-view');
+    hide('public-profile-view');
     show('profile-view');
     await loadProfileView();
 });
 
 document.getElementById('back-from-profile').addEventListener('click', () => {
     hide('profile-view');
-    show('main-view');
+    show(profileReturnView);
 });
 
 async function loadProfileView() {
@@ -773,7 +779,6 @@ window.closeMarket = async function(marketId) {
 // ============ CHIUSURA MODALI CLICCANDO FUORI ============
 document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
-        // Chiude solo se il click è sullo sfondo scuro, non sul contenuto
         if (e.target === modal) {
             modal.classList.add('hidden');
         }
@@ -791,8 +796,11 @@ document.addEventListener('click', (e) => {
 window.openUserProfile = async function(userId) {
     if (!userId) return;
 
-    // Se è il proprio profilo, usa la vista "personale" (con logout e admin)
+    // Traccia la vista di partenza prima di nascondere tutto
+    profileReturnView = getCurrentView();
+
     if (userId === currentUser.id) {
+        // Profilo personale
         hide('main-view');
         hide('market-view');
         hide('admin-view');
@@ -802,6 +810,7 @@ window.openUserProfile = async function(userId) {
         return;
     }
 
+    // Profilo pubblico
     hide('main-view');
     hide('market-view');
     hide('profile-view');
@@ -868,14 +877,10 @@ async function loadPublicProfileView(userId) {
     `;
 }
 
-// Back button intelligente: torna al mercato se aperto, altrimenti alla home
+// Back button: torna alla vista da cui è stato aperto il profilo
 document.getElementById('back-from-public-profile').addEventListener('click', () => {
     hide('public-profile-view');
-    if (currentMarketId && !document.getElementById('market-view').classList.contains('hidden')) {
-        show('market-view');
-    } else {
-        show('main-view');
-    }
+    show(profileReturnView);
 });
 
 // ============ INIT ============
