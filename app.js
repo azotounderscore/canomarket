@@ -10,6 +10,7 @@ let currentMarketId = null;
 let realtimeChannel = null;
 let isSignUp = true;
 let profileReturnView = 'main-view';
+let marketReturnView = 'main-view';
 
 // ============ UTILITY ============
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
@@ -198,6 +199,7 @@ document.querySelectorAll('.filter-chip').forEach(chip => {
 // ============ DETTAGLIO MERCATO ============
 async function openMarket(id) {
     currentMarketId = id;
+    marketReturnView = getCurrentView();
     hide('main-view');
     hide('profile-view');
     hide('admin-view');
@@ -370,9 +372,9 @@ async function loadParticipants(marketId) {
 
 document.getElementById('back-to-home').addEventListener('click', () => {
     hide('market-view');
-    show('main-view');
+    show(marketReturnView);
     if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
-    loadMarkets();
+    if (marketReturnView === 'main-view') loadMarkets();
 });
 
 // ============ REALTIME ============
@@ -575,10 +577,52 @@ document.getElementById('back-from-profile').addEventListener('click', () => {
     show(profileReturnView);
 });
 
+function renderBetHistory(positions) {
+    if (!positions || positions.length === 0) {
+        return '<p class="bet-history-empty">Nessuna puntata ancora</p>';
+    }
+
+    // Ordina per data di creazione del mercato (più recenti in alto)
+    const sorted = [...positions].sort((a, b) => {
+        const da = a.markets?.created_at || '';
+        const db = b.markets?.created_at || '';
+        return db.localeCompare(da);
+    });
+
+    return sorted.map(p => {
+        const m = p.markets;
+        if (!m) return '';
+
+        let statusHtml = '';
+        if (m.status === 'resolved') {
+            const won = (p.side === true && m.outcome === true) ||
+                        (p.side === false && m.outcome === false);
+            statusHtml = won
+                ? '<span class="bet-history-status won">Vinta</span>'
+                : '<span class="bet-history-status lost">Persa</span>';
+        } else if (m.status === 'closed') {
+            statusHtml = '<span class="bet-history-status pending">In attesa</span>';
+        } else {
+            statusHtml = '<span class="bet-history-status open">Aperto</span>';
+        }
+
+        return `
+            <div class="bet-history-card" data-market-id="${m.id}">
+                <div class="bet-history-question">${m.question}</div>
+                <div class="bet-history-details">
+                    <span class="bet-history-side ${p.side ? 'yes' : 'no'}">${p.side ? 'YES' : 'NO'}</span>
+                    <span class="bet-history-shares">${Math.floor(Number(p.shares))} shares</span>
+                    ${statusHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 async function loadProfileView() {
     const { data: positions } = await supabaseClient
         .from('positions')
-        .select('*, markets(question, status, outcome)')
+        .select('*, markets(id, question, status, outcome, created_at)')
         .eq('user_id', currentUser.id);
 
     const { data: txs } = await supabaseClient
@@ -623,6 +667,12 @@ async function loadProfileView() {
 
     if (currentProfile.role === 'admin') {
         content += `<button class="btn-yes" style="margin-bottom:16px" onclick="openAdmin()">Pannello Admin</button>`;
+    }
+
+    content += `<h3 style="margin-bottom:12px;font-size:16px">Le tue puntate</h3>`;
+    content += `<div class="bet-history-list">${renderBetHistory(positions)}</div>`;
+
+    content += `<h3 style="margin:24px 0 12px 0;font-size:16px">Ultime transazioni</h3>`;
     }
 
     content += `<h3 style="margin-bottom:12px;font-size:16px">Ultime transazioni</h3>`;
@@ -871,9 +921,8 @@ async function loadPublicProfileView(userId) {
                 <div class="stat-label">Vinte</div>
             </div>
         </div>
-        <p style="text-align:center;color:var(--text-muted);font-size:13px;margin-top:24px">
-            Lista delle puntate in arrivo prossimamente 🚀
-        </p>
+        <h3 style="margin:24px 0 12px 0;font-size:16px">Puntate</h3>
+        <div class="bet-history-list">${renderBetHistory(positions)}</div>
     `;
 }
 
@@ -881,6 +930,14 @@ async function loadPublicProfileView(userId) {
 document.getElementById('back-from-public-profile').addEventListener('click', () => {
     hide('public-profile-view');
     show(profileReturnView);
+});
+
+// Click sulle card puntata → apri il mercato
+document.addEventListener('click', (e) => {
+    const card = e.target.closest('.bet-history-card');
+    if (card && card.dataset.marketId) {
+        openMarket(card.dataset.marketId);
+    }
 });
 
 // ============ INIT ============
